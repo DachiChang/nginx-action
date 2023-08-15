@@ -17,8 +17,6 @@ jobs:
     name: Build docker image
     runs-on: ubuntu-latest
     container: dachichang/devops-all-in-one:v0.2.2
-    outputs:
-      ecr_image: ${{ steps.build-image.ecr_image }}
 
     steps:
       - name: Check out repository code
@@ -30,24 +28,27 @@ jobs:
           aws ecr get-login-password --region $AWS_REGION | docker login --username AWS --password-stdin $ECR_REGISTRY
 
       - name: Build image and Push
-        id: build-image
+        id: build
         run: |
           set -x
           env
           APP_SHA_SHORT=$(echo $GITHUB_SHA | cut -c1-8)
           DOCKER_IMAGE_TAG_NAME="${ECR_REGISTRY}/${ECR_REPOSITORY}:${IMAGE_TAG}"
           DOCKER_IMAGE_TAG_SHA="${ECR_REGISTRY}/${ECR_REPOSITORY}:${APP_SHA_SHORT}"
-          docker build --platform linux/amd64 \
-            -t $DOCKER_IMAGE_TAG_NAME \
-            -t $DOCKER_IMAGE_TAG_SHA \
-            .
-          docker push $DOCKER_IMAGE_TAG_NAME
-          docker push $DOCKER_IMAGE_TAG_SHA
-          echo "ecr_image=${DOCKER_IMAGE_TAG_SHA}" >> "$GITHUB_OUTPUT"
-          cat $GITHUB_OUTPUT
+          #docker build --platform linux/amd64 \
+          #  -t $DOCKER_IMAGE_TAG_NAME \
+          #  -t $DOCKER_IMAGE_TAG_SHA \
+          #  .
+          #docker push $DOCKER_IMAGE_TAG_NAME
+          #docker push $DOCKER_IMAGE_TAG_SHA
+          #echo "ecr_image=${DOCKER_IMAGE_TAG_SHA}" >> "$GITHUB_OUTPUT"
+          echo "test=hello" >> "$GITHUB_OUTPUT"
         env:
           ECR_REPOSITORY: dachi-test-image
           IMAGE_TAG: ${{ github.ref_name }}
+
+    outputs:
+      output1: ${{ steps.build.outputs.test }}
 
   rollout-ecs:
     name: Rollout ECS
@@ -60,6 +61,6 @@ jobs:
         run: |
           set -x
           echo "rollout to ECS"
-          echo $ECR_IMAGE
+          echo $OUTPUT1
         env:
-          ECR_IMAGE: ${{ needs.build-docker-image.outputs.ecr_image }}
+          OUTPUT1: ${{ needs.build-docker-image.outputs.output1 }}
