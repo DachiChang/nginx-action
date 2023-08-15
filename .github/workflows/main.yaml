@@ -23,12 +23,13 @@ jobs:
       - name: login ECR
         run: |
           set -x
-          docker images
-          env
           aws ecr get-login-password --region $AWS_REGION | docker login --username AWS --password-stdin $ECR_REGISTRY
 
       - name: build image
         run: |
           set -x
+          env
           TAG_NAME="${ECR_REGISTRY}/{$ECR_REPOSITORY}:latest"
-          echo $TAG_NAEM
+          echo $TAG_NAME
+          cd ${{ github.workspace }}
+          ls
