@@ -11,7 +11,6 @@ env:
   AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
   AWS_REGION: ${{ secrets.AWS_REGION }}
   ECR_REGISTRY: ${{ vars.ECR_REGISTRY }}
-  ECR_REPOSITORY: dachi-test-image
 
 jobs:
   build-docker-image:
@@ -23,15 +22,23 @@ jobs:
       - name: Check out repository code
         uses: actions/checkout@v3
 
-      - name: login ECR
+      - name: Login ECR
         run: |
           set -x
           aws ecr get-login-password --region $AWS_REGION | docker login --username AWS --password-stdin $ECR_REGISTRY
 
-      - name: build image
+      - name: Build image
         run: |
           set -x
           env
-          TAG_NAME="${ECR_REGISTRY}/{$ECR_REPOSITORY}:latest"
-          echo $TAG_NAME
-          ls
+          APP_SHA_SHORT=$(git rev-parse --short HEAD)
+          TAG_NAME="${ECR_REGISTRY}/${ECR_REPOSITORY}:${IMAGE_TAG}"
+          TAG_SHA="${ECR_REGISTRY}/${ECR_REPOSITORY}:${APP_SHA_SHORT}"
+          docker build --platform linux/amd64 \
+            -t TAG_NAME \
+            -t TAG_SHA \
+            .
+          docker images |grep $ECR_REPOSITORY
+        env:
+          ECR_REPOSITORY: dachi-test-image
+          IMAGE_TAG: ${{ github.ref_name }}
