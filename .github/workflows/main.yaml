@@ -28,7 +28,7 @@ jobs:
           aws ecr get-login-password --region $AWS_REGION | docker login --username AWS --password-stdin $ECR_REGISTRY
 
       - name: Build image and Push
-        id: build
+        id: build-image
         run: |
           set -x
           env
@@ -41,14 +41,13 @@ jobs:
           #  .
           #docker push $DOCKER_IMAGE_TAG_NAME
           #docker push $DOCKER_IMAGE_TAG_SHA
-          #echo "ecr_image=${DOCKER_IMAGE_TAG_SHA}" >> "$GITHUB_OUTPUT"
-          echo "ecr_image=${DOCKER_IMAGE_TAG_SHA}" >> "$GITHUB_OUTPUT"
+          echo "image_tag=${APP_SHA_SHORT}" >> "$GITHUB_OUTPUT"
         env:
           ECR_REPOSITORY: dachi-test-image
           IMAGE_TAG: ${{ github.ref_name }}
 
     outputs:
-      output1: ${{ steps.build.outputs.ecr_image }}
+      image_tag: ${{ steps.build-image.outputs.image_tag }}
 
   rollout-ecs:
     name: Rollout ECS
@@ -63,4 +62,4 @@ jobs:
           echo "rollout to ECS"
           echo $OUTPUT1
         env:
-          OUTPUT1: ${{ needs.build-docker-image.outputs.output1 }}
+          DEPLOY_IMAGE_TAG: ${{ needs.build-docker-image.outputs.image_tag }}
