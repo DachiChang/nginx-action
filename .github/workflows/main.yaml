@@ -44,6 +44,12 @@ jobs:
           ECR_REPOSITORY: dachi-test-image
           IMAGE_TAG: ${{ github.ref_name }}
 
+  rollout-ecs:
+    name: Rollout ECS
+    runs-on: ubuntu-latest
+    container: dachichang/devops-all-in-one:v0.2.2
+
+    steps:
       - name: Rollout to ECS
         run: |
           set -x
