@@ -42,13 +42,13 @@ jobs:
           #docker push $DOCKER_IMAGE_TAG_NAME
           #docker push $DOCKER_IMAGE_TAG_SHA
           #echo "ecr_image=${DOCKER_IMAGE_TAG_SHA}" >> "$GITHUB_OUTPUT"
-          echo "test=hello" >> "$GITHUB_OUTPUT"
+          echo "ecr_image=${DOCKER_IMAGE_TAG_SHA}" >> "$GITHUB_OUTPUT"
         env:
           ECR_REPOSITORY: dachi-test-image
           IMAGE_TAG: ${{ github.ref_name }}
 
     outputs:
-      output1: ${{ steps.build.outputs.test }}
+      output1: ${{ steps.build.outputs.ecr_image }}
 
   rollout-ecs:
     name: Rollout ECS
