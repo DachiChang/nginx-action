@@ -7,7 +7,10 @@ on:
       - dev
 
 env:
-  ECR_REGISTRY: 213446053867.dkr.ecr.us-west-2.amazonaws.com
+  AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+  AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+  AWS_REGION: ${{ secrets.AWS_REGION }}
+  ECR_REGISTRY: ${{ vars.ECR_REPOSITORY }}
   ECR_REPOSITORY: dachi-test-image
 
 jobs:
@@ -17,8 +20,13 @@ jobs:
     container: dachichang/devops-all-in-one:v0.2.1
 
     steps:
-      - name: build docker image
+      - name: login ECR
         run: |
           set -x
-          env
-          echo $ECR_REPOSITORY
+          aws ecr get-login-password --region $AWS_REGION | docker login --username AWS --password-stdin $ECR_REGISTRY
+
+      - name: build image
+        run: |
+          set -x
+          TAG_NAME="${ECR_REGISTRY}/{$ECR_REPOSITORY}:latest"
+          echo $TAG_NAEM
