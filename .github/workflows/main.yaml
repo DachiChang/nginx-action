@@ -19,7 +19,8 @@ jobs:
     runs-on: ubuntu-latest
     container:
       image: dachichang/devops-all-in-one:v0.2.2
-      volumes: /var/run/docker.sock:/var/run/docker.sock
+      volumes:
+        - /var/run/docker.sock:/var/run/docker.sock
 
     steps:
       - name: login ECR
