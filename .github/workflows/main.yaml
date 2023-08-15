@@ -31,5 +31,4 @@ jobs:
           env
           TAG_NAME="${ECR_REGISTRY}/{$ECR_REPOSITORY}:latest"
           echo $TAG_NAME
-          cd ${{ github.workspace }}
           ls
