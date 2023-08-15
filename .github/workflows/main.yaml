@@ -17,10 +17,7 @@ jobs:
   build-docker-image:
     name: Build docker image
     runs-on: ubuntu-latest
-    container:
-      image: dachichang/devops-all-in-one:v0.2.2
-      volumes:
-        - /var/run/docker.sock:/var/run/docker.sock
+    container: dachichang/devops-all-in-one:v0.2.2
 
     steps:
       - name: login ECR
