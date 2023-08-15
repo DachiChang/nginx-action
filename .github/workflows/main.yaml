@@ -2,26 +2,26 @@ name: build docker image and rollout ECS
 
 on:
   push:
-    branches:
+    branches: # trigger in main or dev
       - main
       - dev
 
 env:
-  AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+  AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }} # inject from Settings -> Secrets -> Actions (immutable)
   AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
   AWS_REGION: ${{ secrets.AWS_REGION }}
-  ECR_REGISTRY: ${{ vars.ECR_REGISTRY }}
-  ECR_REPOSITORY: dachi-test-image
+  ECR_REGISTRY: ${{ vars.ECR_REGISTRY }} # inject from Settings -> Variables -> Actions (mutable)
+  ECR_REPOSITORY: dachi-test-image # global environment for this pipeline
 
 jobs:
   build-docker-image:
     name: Build docker image
     runs-on: ubuntu-latest
-    container: dachichang/devops-all-in-one:v0.2.2
+    container: dachichang/devops-all-in-one:v0.2.2 # use self-host docker image can provide more powerful command environment
 
     steps:
       - name: Check out repository code
-        uses: actions/checkout@v3
+        uses: actions/checkout@v3 # use github host git clone actions
 
       - name: Login ECR
         run: |
@@ -42,12 +42,12 @@ jobs:
             .
           docker push $DOCKER_IMAGE_TAG_NAME
           docker push $DOCKER_IMAGE_TAG_SHA
-          echo "image_tag=${APP_SHA_SHORT}" >> "$GITHUB_OUTPUT"
+          echo "image_tag=${APP_SHA_SHORT}" >> "$GITHUB_OUTPUT" # export data to this job outputs, It will be refered by another jobs
         env:
           IMAGE_TAG: ${{ github.ref_name }} # dev | main
 
     outputs:
-      image_tag: ${{ steps.build-image.outputs.image_tag }}
+      image_tag: ${{ steps.build-image.outputs.image_tag }} # export outputs
 
   rollout-ecs:
     name: Rollout ECS
