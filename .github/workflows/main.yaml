@@ -31,7 +31,7 @@ jobs:
         run: |
           set -x
           env
-          APP_SHA_SHORT=$(git rev-parse --short HEAD)
+          APP_SHA_SHORT=$(echo $GITHUB_SHA | cut -c1-8)
           TAG_NAME="${ECR_REGISTRY}/${ECR_REPOSITORY}:${IMAGE_TAG}"
           TAG_SHA="${ECR_REGISTRY}/${ECR_REPOSITORY}:${APP_SHA_SHORT}"
           docker build --platform linux/amd64 \
