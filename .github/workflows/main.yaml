@@ -43,3 +43,8 @@ jobs:
         env:
           ECR_REPOSITORY: dachi-test-image
           IMAGE_TAG: ${{ github.ref_name }}
+
+      - name: Rollout to ECS
+        run: |
+          set -x
+          echo "rollout to ECS"
