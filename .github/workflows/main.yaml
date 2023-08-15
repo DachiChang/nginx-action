@@ -48,6 +48,7 @@ jobs:
     name: Rollout ECS
     runs-on: ubuntu-latest
     container: dachichang/devops-all-in-one:v0.2.2
+    needs: build-docker-image
 
     steps:
       - name: Rollout to ECS
