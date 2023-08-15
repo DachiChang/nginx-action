@@ -38,7 +38,8 @@ jobs:
             -t $DOCKER_IMAGE_TAG_NAME \
             -t $DOCKER_IMAGE_TAG_SHA \
             .
-          docker push $DOCKER_IMAGE_TAG_NAME $DOCKER_IMAGE_TAG_SHA
+          docker push $DOCKER_IMAGE_TAG_NAME
+          docker push $DOCKER_IMAGE_TAG_SHA
         env:
           ECR_REPOSITORY: dachi-test-image
           IMAGE_TAG: ${{ github.ref_name }}
