@@ -11,6 +11,7 @@ env:
   AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
   AWS_REGION: ${{ secrets.AWS_REGION }}
   ECR_REGISTRY: ${{ vars.ECR_REGISTRY }}
+  ECR_REPOSITORY: dachi-test-image
 
 jobs:
   build-docker-image:
@@ -35,15 +36,14 @@ jobs:
           APP_SHA_SHORT=$(echo $GITHUB_SHA | cut -c1-8)
           DOCKER_IMAGE_TAG_NAME="${ECR_REGISTRY}/${ECR_REPOSITORY}:${IMAGE_TAG}"
           DOCKER_IMAGE_TAG_SHA="${ECR_REGISTRY}/${ECR_REPOSITORY}:${APP_SHA_SHORT}"
-          #docker build --platform linux/amd64 \
-          #  -t $DOCKER_IMAGE_TAG_NAME \
-          #  -t $DOCKER_IMAGE_TAG_SHA \
-          #  .
-          #docker push $DOCKER_IMAGE_TAG_NAME
-          #docker push $DOCKER_IMAGE_TAG_SHA
+          docker build --platform linux/amd64 \
+            -t $DOCKER_IMAGE_TAG_NAME \
+            -t $DOCKER_IMAGE_TAG_SHA \
+            .
+          docker push $DOCKER_IMAGE_TAG_NAME
+          docker push $DOCKER_IMAGE_TAG_SHA
           echo "image_tag=${APP_SHA_SHORT}" >> "$GITHUB_OUTPUT"
         env:
-          ECR_REPOSITORY: dachi-test-image
           IMAGE_TAG: ${{ github.ref_name }}
 
     outputs:
@@ -59,7 +59,13 @@ jobs:
       - name: Rollout to ECS
         run: |
           set -x
-          echo "rollout to ECS"
-          echo $DEPLOY_IMAGE_TAG
+          ECR_IMAGE="${ECR_REGISTRY}/${ECR_REPOSITORY}:${DEPLOY_IMAGE_TAG}"
+          TASK_DEFINITION=$(aws ecs describe-task-definition --task-definition "nginx-demo" --region "$AWS_REGION")
+          NEW_TASK_DEFINTIION=$(echo $TASK_DEFINITION | jq --arg IMAGE "$ECR_IMAGE" '.taskDefinition | .containerDefinitions[0].image = $IMAGE | del(.taskDefinitionArn) | del(.revision) | del(.status) | del(.requiresAttributes) | del(.compatibilities)')
+          NEW_TASK_INFO=$(aws ecs register-task-definition --region "$AWS_DEFAULT_REGION" --cli-input-json "$NEW_TASK_DEFINTIION")
+          NEW_REVISION=$(echo $NEW_TASK_INFO | jq '.taskDefinition.revision')
+          aws ecs update-service --cluster ${ECS_CLUSTER} \
+                       --service ${SERVICE_NAME} \
+                       --task-definition nginx-demo:${NEW_REVISION}
         env:
           DEPLOY_IMAGE_TAG: ${{ needs.build-docker-image.outputs.image_tag }}
