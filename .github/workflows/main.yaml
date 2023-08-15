@@ -61,4 +61,4 @@ jobs:
           echo "rollout to ECS"
           echo $ECR_IMAGE
         env:
-          ECR_IMAGE: ${{ needs.build-docker-image.output.ecr_image }}
+          ECR_IMAGE: ${{ needs.build-docker-image.outputs.ecr_image }}
