@@ -60,6 +60,6 @@ jobs:
         run: |
           set -x
           echo "rollout to ECS"
-          echo $OUTPUT1
+          echo $DEPLOY_IMAGE_TAG
         env:
           DEPLOY_IMAGE_TAG: ${{ needs.build-docker-image.outputs.image_tag }}
