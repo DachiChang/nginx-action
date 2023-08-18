@@ -1,0 +1,96 @@
+name: build docker image and rollout ECS
+
+on:
+  push:
+    tags:
+      - 'beta-[0-9]+.[0-9]+.[0-9]+'
+      - 'dev-[0-9]+.[0-9]+.[0-9]+'
+      - '[0-9]+.[0-9]+.[0-9]+'
+
+env:
+  AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }} # inject from Settings -> Secrets -> Actions (immutable)
+  AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+  AWS_REGION: ${{ secrets.AWS_REGION }}
+  ECR_REPOSITORY: dachi-test-image # global environment for this pipeline
+  IMAGE_TAG: ${{ github.ref_name }} # tag name
+  AWS_ECS_CLUSTER: ecs-demo-cluster
+  AWS_ECS_SERVICE: demo-frontend
+  AWS_ECS_TASK_DEFINITION: demo-frontend
+  AWS_ECS_CONTAINER: demo-frontend
+
+jobs:
+  build-docker-image:
+    name: Build docker image
+    runs-on: ubuntu-latest
+    container: dachichang/devops-all-in-one:v0.2.2 # use self-host docker image can provide more powerful command environment
+
+    steps:
+      - name: Check out repository code
+        uses: actions/checkout@v3 # use github host git clone actions
+
+      - name: Login to Amazon ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v1
+
+      - name: Build image and Push
+        id: build-image
+        env:
+          ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
+        run: |
+          set -x # display all command
+          env # show all Github pre-prepared vairables
+          APP_SHA_SHORT=$(echo $GITHUB_SHA | cut -c1-8)
+          DOCKER_IMAGE_TAG_NAME="${ECR_REGISTRY}/${ECR_REPOSITORY}:${IMAGE_TAG}"
+          DOCKER_IMAGE_TAG_SHA="${ECR_REGISTRY}/${ECR_REPOSITORY}:${APP_SHA_SHORT}"
+          docker build --platform linux/amd64 \
+            -t ${DOCKER_IMAGE_TAG_NAME} \
+            -t ${DOCKER_IMAGE_TAG_SHA} \
+            .
+          docker push ${DOCKER_IMAGE_TAG_NAME}
+          docker push ${DOCKER_IMAGE_TAG_SHA}
+          echo "image_tag=${APP_SHA_SHORT}" >> "$GITHUB_OUTPUT" # export data to this job outputs, It will be refered by another jobs
+
+      - name: Download Amazon ECS task definition
+        run: |
+          aws ecs describe-task-definition --task-definition ${AWS_ECS_TASK_DEFINITION} --query taskDefinition > task-definition.json
+
+      - name: Update Amazon ECS task definition
+        id: update-task-def
+        uses: aws-actions/amazon-ecs-render-task-definition@v1
+        env:
+          ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
+        with:
+          task-definition: task-definition.json
+          container-name: ${{ env.AWS_ECS_CONTAINER }}
+          image: ${{ env.ECR_REGISTRY }}/${{ env.ECR_REPOSITORY }}:${{ env.IMAGE_TAG }}
+
+      - name: Deploy Amazon ECS task definition
+        id: deploy-ecs
+        uses: aws-actions/amazon-ecs-deploy-task-definition@v1
+        with:
+          task-definition: ${{ steps.update-task-def.outputs.task-definition }}
+          cluster: ${{ env.AWS_ECS_CLUSTER }}
+          service: ${{ env.AWS_ECS_SERVICE }}
+          wait-for-service-stability: true
+
+  #rollout-ecs:
+  #  name: Rollout ECS
+  #  runs-on: ubuntu-latest
+  #  container: dachichang/devops-all-in-one:v0.2.2
+  #  needs: build-docker-image
+#
+  #  steps:
+  #    - name: Rollout to ECS
+  #      env:
+  #        ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
+  #        DEPLOY_IMAGE_TAG: ${{ needs.build-docker-image.outputs.image_tag }}
+  #      run: |
+  #        set -x
+  #        ECR_IMAGE="${ECR_REGISTRY}/${ECR_REPOSITORY}:${DEPLOY_IMAGE_TAG}"
+  #        TASK_DEFINITION=$(aws ecs describe-task-definition --task-definition "nginx-demo" --region "$AWS_REGION")
+  #        NEW_TASK_DEFINTIION=$(echo $TASK_DEFINITION | jq --arg IMAGE "$ECR_IMAGE" '.taskDefinition | .containerDefinitions[0].image = $IMAGE | del(.taskDefinitionArn) | del(.revision) | del(.status) | del(.requiresAttributes) | del(.compatibilities)')
+  #        NEW_TASK_INFO=$(aws ecs register-task-definition --region "$AWS_DEFAULT_REGION" --cli-input-json "$NEW_TASK_DEFINTIION")
+  #        NEW_REVISION=$(echo $NEW_TASK_INFO | jq '.taskDefinition.revision')
+  #        aws ecs update-service --cluster ${ECS_CLUSTER} \
+  #                                --service ${SERVICE_NAME} \
+  #                                --task-definition nginx-demo:${NEW_REVISION}
